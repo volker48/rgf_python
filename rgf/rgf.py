@@ -10,18 +10,10 @@ from sklearn.base import RegressorMixin
 from sklearn.utils.extmath import softmax
 from sklearn.utils.validation import NotFittedError
 
-sys_name = platform.system()
-WINDOWS = 'Windows'
-LINUX = 'Linux'
-
 ## Edit this ##################################################
-if sys_name == WINDOWS:
-    #Location of the RGF executable
-    loc_exec = 'C:\\Users\\rf\\Documents\\python\\rgf1.2\\bin\\rgf.exe'
-    loc_temp = 'temp/'
-elif sys_name == LINUX:
-    loc_exec = '/opt/rgf1.2/bin/rgf'
-    loc_temp = '/tmp/rgf'
+loc_exec = 'rgf'
+loc_temp = '/tmp/rgf'
+
 
 ## End Edit ##################################################
 
@@ -31,14 +23,11 @@ def sigmoid(x):
     output : array-like
 
     """
-    return 1. / (1.+ np.exp(-x))
+    return 1. / (1. + np.exp(-x))
 
 
 def platform_specific_Popen(cmd, **kwargs):
-    if sys_name == WINDOWS:
-        return subprocess.Popen(cmd.split(), **kwargs)
-    elif sys_name == LINUX:
-        return subprocess.Popen(cmd, **kwargs)
+    return subprocess.Popen(cmd, **kwargs)
 
 
 class RGFClassifier(BaseEstimator, ClassifierMixin):
@@ -94,6 +83,7 @@ class RGFClassifier(BaseEstimator, ClassifierMixin):
     [1] Rie Johnson and Tong Zhang. Learning nonlinear functions using regularized greedy forest
     """
     instance_count = 0
+
     def __init__(self,
                  verbose=0,
                  max_leaf=1000,
@@ -164,15 +154,15 @@ class RGFClassifier(BaseEstimator, ClassifierMixin):
                 y_one_or_rest = (y == cls_num).astype(int)
                 prefix = "{0}_c{1}".format(self.prefix, i)
                 self.estimators[i] = RGFBinaryClassifier(verbose=self.verbose,
-                                     max_leaf=self.max_leaf,
-                                     test_interval=self.test_interval,
-                                     algorithm=self.algorithm,
-                                     loss=self.loss,
-                                     reg_depth=self.reg_depth,
-                                     l2=self.l2,
-                                     prefix=prefix,
-                                     inc_prefix=False,
-                                     clean=self.clean)
+                                                         max_leaf=self.max_leaf,
+                                                         test_interval=self.test_interval,
+                                                         algorithm=self.algorithm,
+                                                         loss=self.loss,
+                                                         reg_depth=self.reg_depth,
+                                                         l2=self.l2,
+                                                         prefix=prefix,
+                                                         inc_prefix=False,
+                                                         clean=self.clean)
                 self.estimators[i].fit(X, y_one_or_rest)
         return self
 
@@ -194,14 +184,14 @@ class RGFClassifier(BaseEstimator, ClassifierMixin):
 
         if self.n_classes_ <= 2:
             proba = self.estimator.predict_proba(X)
-            proba = np.c_[1-proba, proba]
+            proba = np.c_[1 - proba, proba]
         else:
             proba = np.zeros((X.shape[0], self.n_classes_))
             for i, clf in enumerate(self.estimators):
                 class_proba = clf.predict_proba(X)
                 proba[:, i] = class_proba
 
-            #In honest I don't understand which is better
+            # In honest I don't understand which is better
             # softmax or normalized sigmoid for calc probability.
             if self.calc_prob == "Sigmoid":
                 proba = sigmoid(proba)
@@ -251,6 +241,7 @@ class RGFBinaryClassifier(BaseEstimator, ClassifierMixin):
     RGFBinaryClassifier should be instantiated only by RGFClassifier.
 
     """
+
     def __init__(self,
                  verbose=0,
                  max_leaf=500,
@@ -280,35 +271,36 @@ class RGFBinaryClassifier(BaseEstimator, ClassifierMixin):
         if not os.path.isdir(loc_temp):
             os.mkdir(loc_temp)
 
-	#Fitting/training the model to target variables
+            # Fitting/training the model to target variables
+
     def fit(self, X, y):
-		#Store the train set into RGF format
+        # Store the train set into RGF format
         np.savetxt(os.path.join(loc_temp, "train.data.x"), X, delimiter=' ', fmt="%s")
 
-        #convert 1 to 1, 0 to -1
-        y = 2*y - 1
+        # convert 1 to 1, 0 to -1
+        y = 2 * y - 1
 
-		#Store the targets into RGF format
+        # Store the targets into RGF format
         np.savetxt(os.path.join(loc_temp, "train.data.y"), y, delimiter=' ', fmt="%s")
 
-		#format train command
+        # format train command
         params = []
         if self.verbose > 0:
             params.append("Verbose")
-        params.append("train_x_fn=%s"%os.path.join(loc_temp, "train.data.x"))
-        params.append("train_y_fn=%s"%os.path.join(loc_temp, "train.data.y"))
-        params.append("algorithm=%s"%self.algorithm)
-        params.append("loss=%s"%self.loss)
-        params.append("max_leaf_forest=%s"%self.max_leaf)
-        params.append("test_interval=%s"%self.test_interval)
-        params.append("reg_L2=%s"%self.l2)
-        params.append("reg_sL2=%s"%self.sl2)
-        params.append("reg_depth=%s"%self.reg_depth)
-        params.append("model_fn_prefix=%s"%os.path.join(loc_temp, self.file_prefix))
+        params.append("train_x_fn=%s" % os.path.join(loc_temp, "train.data.x"))
+        params.append("train_y_fn=%s" % os.path.join(loc_temp, "train.data.y"))
+        params.append("algorithm=%s" % self.algorithm)
+        params.append("loss=%s" % self.loss)
+        params.append("max_leaf_forest=%s" % self.max_leaf)
+        params.append("test_interval=%s" % self.test_interval)
+        params.append("reg_L2=%s" % self.l2)
+        params.append("reg_sL2=%s" % self.sl2)
+        params.append("reg_depth=%s" % self.reg_depth)
+        params.append("model_fn_prefix=%s" % os.path.join(loc_temp, self.file_prefix))
 
-        cmd = "%s train %s 2>&1"%(loc_exec, ",".join(params))
+        cmd = "%s train %s 2>&1" % (loc_exec, ",".join(params))
 
-        #train
+        # train
         output = platform_specific_Popen(cmd, stdout=subprocess.PIPE, shell=True).communicate()
 
         if self.verbose:
@@ -322,19 +314,19 @@ class RGFBinaryClassifier(BaseEstimator, ClassifierMixin):
             raise NotFittedError("Estimator not fitted, "
                                  "call `fit` before exploiting the model.")
 
-        #Store the test set into RGF format
+        # Store the test set into RGF format
         np.savetxt(os.path.join(loc_temp, "test.data.x"), X, delimiter=' ', fmt="%s")
 
-        #Find latest model location
+        # Find latest model location
         model_glob = loc_temp + os.sep + self.file_prefix + "*"
         latest_model_loc = sorted(glob(model_glob), reverse=True)[0]
 
-        #Format test command
+        # Format test command
         params = []
-        params.append("test_x_fn=%s"%os.path.join(loc_temp, "test.data.x"))
-        params.append("prediction_fn=%s"%os.path.join(loc_temp, "predictions.txt"))
-        params.append("model_fn=%s"%latest_model_loc)
-        cmd = "%s predict %s 2>&1"%(loc_exec, ",".join(params))
+        params.append("test_x_fn=%s" % os.path.join(loc_temp, "test.data.x"))
+        params.append("prediction_fn=%s" % os.path.join(loc_temp, "predictions.txt"))
+        params.append("model_fn=%s" % latest_model_loc)
+        cmd = "%s predict %s 2>&1" % (loc_exec, ",".join(params))
 
         output = platform_specific_Popen(cmd, stdout=subprocess.PIPE, shell=True).communicate()
 
@@ -344,7 +336,7 @@ class RGFBinaryClassifier(BaseEstimator, ClassifierMixin):
 
         y_pred = np.loadtxt(os.path.join(loc_temp, "predictions.txt"))
 
-        #Clean temp directory
+        # Clean temp directory
         if self.clean:
             model_glob = loc_temp + os.sep + "*"
 
@@ -356,6 +348,7 @@ class RGFBinaryClassifier(BaseEstimator, ClassifierMixin):
 
 class RGFRegressor(BaseEstimator, RegressorMixin):
     instance_count = 0
+
     def __init__(self,
                  verbose=0,
                  max_leaf=500,
@@ -404,30 +397,30 @@ class RGFRegressor(BaseEstimator, RegressorMixin):
         self : object
             Returns self.
         """
-        #Store the train set into RGF format
+        # Store the train set into RGF format
         np.savetxt(os.path.join(loc_temp, "train.data.x"), X, delimiter=' ', fmt="%s")
-        #Store the targets into RGF format
+        # Store the targets into RGF format
         np.savetxt(os.path.join(loc_temp, "train.data.y"), y, delimiter=' ', fmt="%s")
 
-		#format train command
+        # format train command
         params = []
         if self.verbose > 0:
             params.append("Verbose")
         params.append("NormalizeTarget")
-        params.append("train_x_fn=%s"%os.path.join(loc_temp, "train.data.x"))
-        params.append("train_y_fn=%s"%os.path.join(loc_temp, "train.data.y"))
-        params.append("algorithm=%s"%self.algorithm)
-        params.append("loss=%s"%self.loss)
-        params.append("max_leaf_forest=%s"%self.max_leaf)
-        params.append("test_interval=%s"%self.test_interval)
-        params.append("reg_L2=%s"%self.l2)
-        params.append("reg_sL2=%s"%self.sl2)
-        params.append("reg_depth=%s"%self.reg_depth)
-        params.append("model_fn_prefix=%s"%os.path.join(loc_temp, self.file_prefix))
+        params.append("train_x_fn=%s" % os.path.join(loc_temp, "train.data.x"))
+        params.append("train_y_fn=%s" % os.path.join(loc_temp, "train.data.y"))
+        params.append("algorithm=%s" % self.algorithm)
+        params.append("loss=%s" % self.loss)
+        params.append("max_leaf_forest=%s" % self.max_leaf)
+        params.append("test_interval=%s" % self.test_interval)
+        params.append("reg_L2=%s" % self.l2)
+        params.append("reg_sL2=%s" % self.sl2)
+        params.append("reg_depth=%s" % self.reg_depth)
+        params.append("model_fn_prefix=%s" % os.path.join(loc_temp, self.file_prefix))
 
-        cmd = "%s train %s 2>&1"%(loc_exec, ",".join(params))
+        cmd = "%s train %s 2>&1" % (loc_exec, ",".join(params))
 
-        #train
+        # train
         output = platform_specific_Popen(cmd, stdout=subprocess.PIPE, shell=True).communicate()
 
         if self.verbose:
@@ -455,19 +448,19 @@ class RGFRegressor(BaseEstimator, RegressorMixin):
             raise NotFittedError("Estimator not fitted, "
                                  "call `fit` before exploiting the model.")
 
-        #Store the test set into RGF format
+        # Store the test set into RGF format
         np.savetxt(os.path.join(loc_temp, "test.data.x"), X, delimiter=' ', fmt="%s")
 
-        #Find latest model location
+        # Find latest model location
         model_glob = loc_temp + os.sep + self.file_prefix + "*"
         latest_model_loc = sorted(glob(model_glob), reverse=True)[0]
 
-        #Format test command
+        # Format test command
         params = []
-        params.append("test_x_fn=%s"%os.path.join(loc_temp, "test.data.x"))
-        params.append("prediction_fn=%s"%os.path.join(loc_temp, "predictions.txt"))
-        params.append("model_fn=%s"%latest_model_loc)
-        cmd = "%s predict %s"%(loc_exec, ",".join(params)) # 2>&1
+        params.append("test_x_fn=%s" % os.path.join(loc_temp, "test.data.x"))
+        params.append("prediction_fn=%s" % os.path.join(loc_temp, "predictions.txt"))
+        params.append("model_fn=%s" % latest_model_loc)
+        cmd = "%s predict %s" % (loc_exec, ",".join(params))  # 2>&1
 
         output = platform_specific_Popen(cmd, stdout=subprocess.PIPE, shell=True).communicate()
 
@@ -477,7 +470,7 @@ class RGFRegressor(BaseEstimator, RegressorMixin):
 
         y_pred = np.loadtxt(os.path.join(loc_temp, "predictions.txt"))
 
-        #Clean temp directory
+        # Clean temp directory
         if self.clean:
             model_glob = loc_temp + os.sep + "*"
 
