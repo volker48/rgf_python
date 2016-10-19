@@ -18,6 +18,15 @@ loc_temp = '/tmp/rgf'
 ## End Edit ##################################################
 
 
+# validate path
+if ' ' in loc_exec:
+    raise Exception('loc_exec must not include " ".')
+if ' ' in loc_temp:
+    raise Exception('loc_temp must not include " ".')
+if not os.access(loc_exec, os.X_OK):
+    raise Exception('{0} is not executable file. Please set loc_exec to rgf execution file'.format(loc_exec))
+
+
 def sigmoid(x):
     """x : array-like
     output : array-like
@@ -270,6 +279,8 @@ class RGFBinaryClassifier(BaseEstimator, ClassifierMixin):
         self.clean = clean
         if not os.path.isdir(loc_temp):
             os.mkdir(loc_temp)
+        if not os.access(loc_temp, os.W_OK):
+            raise Exception('{0} is not writable directory. Please set loc_temp to writable directory'.format(loc_temp))
 
             # Fitting/training the model to target variables
 
@@ -319,6 +330,8 @@ class RGFBinaryClassifier(BaseEstimator, ClassifierMixin):
 
         # Find latest model location
         model_glob = loc_temp + os.sep + self.file_prefix + "*"
+        if not glob(model_glob):
+            raise Exception('Model learning result is not found @{0}. This is rgf_python error.'.format(loc_temp))
         latest_model_loc = sorted(glob(model_glob), reverse=True)[0]
 
         # Format test command
@@ -378,6 +391,10 @@ class RGFRegressor(BaseEstimator, RegressorMixin):
         else:
             self.sl2 = sl2
         self.clean = clean
+        if not os.path.isdir(loc_temp):
+            os.mkdir(loc_temp)
+        if not os.access(loc_temp, os.W_OK):
+            raise Exception('{0} is not writable directory. Please set loc_temp to writable directory'.format(loc_temp))
         self.fitted = False
 
     def fit(self, X, y):
@@ -453,6 +470,8 @@ class RGFRegressor(BaseEstimator, RegressorMixin):
 
         # Find latest model location
         model_glob = loc_temp + os.sep + self.file_prefix + "*"
+        if not glob(model_glob):
+            raise Exception('Model learning result is not found @{0}. This is rgf_python error.'.format(loc_temp))
         latest_model_loc = sorted(glob(model_glob), reverse=True)[0]
 
         # Format test command

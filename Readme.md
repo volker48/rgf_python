@@ -14,7 +14,7 @@ ex.
 from sklearn import datasets
 from sklearn.utils.validation import check_random_state
 from sklearn.cross_validation import StratifiedKFold
-from rgf.lib.rgf import RGFClassifier
+from rgf.rgf import RGFClassifier
 
 iris = datasets.load_iris()
 rng = check_random_state(0)
@@ -46,7 +46,7 @@ print('score: {0}'.format(rgf_score))
 ## Software Requirement
 
 * Python (2.7 or 3.4)
-* scikit-learn
+* scikit-learn (0.18 or later)
 * RGF(http://stat.rutgers.edu/home/tzhang/software/rgf/)
 
 If you can't access the avove URL, alternatively, you can get RGF by downloading https://github.com/fukatani/rgf_python/releases/download/0.1.0/rgf1.2.zip.
@@ -60,7 +60,7 @@ git clone https://github.com/fukatani/rgf_python.git
 python setup.py install
 ```
 
-**And you need to edit rgf/lib/rgf.py**
+**And you need to edit rgf/rgf.py**
 
 ```python
 ## Edit this ##################################################
